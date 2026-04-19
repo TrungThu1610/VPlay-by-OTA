@@ -46,8 +46,8 @@ async function startServer() {
     return proxy(req, res, next);
   });
 
-  // CORS PROXY FOR GOOGLE DRIVE (Follows Redirects & strips CORP)
-  app.use("/proxy-drive", (req, res, next) => {
+  // CORS PROXY FOR GOOGLE DRIVE (Follows Redirects & strips CORP) - Matches Vercel API
+  app.use(["/api/proxy-drive", "/proxy-drive"], (req, res, next) => {
     const targetUrl = req.query.url as string;
     if (!targetUrl) return res.status(400).send("No URL provided");
 

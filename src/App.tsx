@@ -473,8 +473,9 @@ function TVContent({ active, setActive, isDark, favorites, toggleFavorite, user,
   const timeString = currentTime.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false });
   const isMaintenance = active.status === "maintenance";
 
-  // Maintenance video statically served from the public folder to ensure Vercel compatibility and a stable URL
-  const proxiedMaintenanceUrl = "/maintenance.mp4";
+  // Maintenance video proxied via Vercel Serverless Function to bypass CORS and CORP
+  const maintenanceUrl = "https://docs.google.com/uc?export=download&id=1MWlCIonW7iTWTLOP5PxKru6KFujUV7P6";
+  const proxiedMaintenanceUrl = `/api/proxy-drive?url=${encodeURIComponent(maintenanceUrl)}`;
 
   const filteredChannels = channels
     .filter(ch => {
