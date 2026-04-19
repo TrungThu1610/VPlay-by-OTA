@@ -12,6 +12,7 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, on
 import { doc, getDoc, setDoc, collection, getDocs, serverTimestamp, updateDoc, arrayUnion, getDocFromServer } from "firebase/firestore";
 
 import { channels, Channel } from "./channels";
+import maintenanceVideoUrl from "./assets/maintenance.mp4";
 
 // Test connection as per critical directive
 // Test connection removed
@@ -473,8 +474,8 @@ function TVContent({ active, setActive, isDark, favorites, toggleFavorite, user,
   const timeString = currentTime.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false });
   const isMaintenance = active.status === "maintenance";
 
-  // Maintenance video statically served from the public folder to ensure Vercel compatibility
-  const proxiedMaintenanceUrl = "/maintenance.mp4";
+  // Maintenance video statically served from the assets folder to ensure Vercel compatibility
+  const proxiedMaintenanceUrl = maintenanceVideoUrl;
 
   const filteredChannels = channels
     .filter(ch => {
@@ -797,6 +798,7 @@ function TVContent({ active, setActive, isDark, favorites, toggleFavorite, user,
                     src={proxiedMaintenanceUrl}
                     className="w-full h-full object-cover"
                     autoPlay
+                    playsInline
                     loop
                     controls
                     muted={isMuted}
@@ -857,42 +859,42 @@ function TVContent({ active, setActive, isDark, favorites, toggleFavorite, user,
               </button>
             )}
             {/* Modern Redesigned Control Bar */}
-            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/95 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 px-4 pb-4 pt-10 ring-1 ring-inset ring-white/5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <button 
-                    onClick={togglePlay} 
-                    className="p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-all active:scale-95 group/btn"
-                  >
-                    {isPlaying ? <Pause size={20} fill="white" className="group-hover/btn:scale-110 transition-transform" /> : <Play size={20} fill="white" className="group-hover/btn:scale-110 transition-transform" />}
-                  </button>
-
-                  <div className="flex items-center gap-3 bg-black/40 hover:bg-black/60 transition-all rounded-full p-1.5 px-3 group/vol">
-                    <button onClick={toggleMute} className="text-white hover:text-white transition-colors">
-                      {isMuted || volume === 0 ? <VolumeX size={20} /> : <Volume2 size={20} />}
+            {!isMaintenance && (
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/95 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 px-4 pb-4 pt-10 ring-1 ring-inset ring-white/5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <button 
+                      onClick={togglePlay} 
+                      className="p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-all active:scale-95 group/btn"
+                    >
+                      {isPlaying ? <Pause size={20} fill="white" className="group-hover/btn:scale-110 transition-transform" /> : <Play size={20} fill="white" className="group-hover/btn:scale-110 transition-transform" />}
                     </button>
-                    <input 
-                      type="range" 
-                      min="0" 
-                      max="1" 
-                      step="0.05" 
-                      value={isMuted ? 0 : volume} 
-                      onChange={handleVolumeChange}
-                      className="w-0 group-hover/vol:w-20 transition-all duration-300 h-1 bg-white/20 rounded-lg appearance-none cursor-pointer accent-white"
-                    />
-                  </div>
 
-                  <div className="flex items-center gap-3 px-4 py-2 bg-black/40 rounded-full select-none">
-                    <span className="text-white text-base font-medium tracking-tight h-5 flex items-center">{timeString}</span>
-                    <div className="flex items-center gap-2 border-l border-white/20 ml-1 pl-3">
-                      <div className="w-2 h-2 bg-red-600 rounded-full animate-pulse shadow-[0_0_8px_rgba(220,38,38,0.8)]" />
-                      <span className="text-white text-sm font-bold tracking-wide uppercase">Trực tiếp</span>
+                    <div className="flex items-center gap-3 bg-black/40 hover:bg-black/60 transition-all rounded-full p-1.5 px-3 group/vol">
+                      <button onClick={toggleMute} className="text-white hover:text-white transition-colors">
+                        {isMuted || volume === 0 ? <VolumeX size={20} /> : <Volume2 size={20} />}
+                      </button>
+                      <input 
+                        type="range" 
+                        min="0" 
+                        max="1" 
+                        step="0.05" 
+                        value={isMuted ? 0 : volume} 
+                        onChange={handleVolumeChange}
+                        className="w-0 group-hover/vol:w-20 transition-all duration-300 h-1 bg-white/20 rounded-lg appearance-none cursor-pointer accent-white"
+                      />
+                    </div>
+
+                    <div className="flex items-center gap-3 px-4 py-2 bg-black/40 rounded-full select-none">
+                      <span className="text-white text-base font-medium tracking-tight h-5 flex items-center">{timeString}</span>
+                      <div className="flex items-center gap-2 border-l border-white/20 ml-1 pl-3">
+                        <div className="w-2 h-2 bg-red-600 rounded-full animate-pulse shadow-[0_0_8px_rgba(220,38,38,0.8)]" />
+                        <span className="text-white text-sm font-bold tracking-wide uppercase">Trực tiếp</span>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="flex items-center gap-2">
-                  {!isMaintenance && (
+                  <div className="flex items-center gap-2">
                     <div className="relative">
                       <button 
                         onClick={() => setShowQualityMenu(!showQualityMenu)} 
@@ -924,9 +926,7 @@ function TVContent({ active, setActive, isDark, favorites, toggleFavorite, user,
                         )}
                       </AnimatePresence>
                     </div>
-                  )}
 
-                  {!isMaintenance && (
                     <button 
                       onClick={toggleRecording} 
                       className={`p-3 rounded-full text-white transition-all active:scale-95 group/record ${isRecording ? "bg-red-500 hover:bg-red-600 shadow-[0_0_15px_rgba(239,68,68,0.5)]" : "bg-white/10 hover:bg-white/20"}`}
@@ -934,13 +934,13 @@ function TVContent({ active, setActive, isDark, favorites, toggleFavorite, user,
                     >
                       <Circle size={20} className={isRecording ? "fill-white" : "group-hover/record:fill-red-500 transition-colors"} />
                     </button>
-                  )}
-                  <button onClick={toggleFullscreen} className="p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-all active:scale-95">
-                    <Maximize2 size={20} />
-                  </button>
+                    <button onClick={toggleFullscreen} className="p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-all active:scale-95">
+                      <Maximize2 size={20} />
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </>
         )}
       </div>
