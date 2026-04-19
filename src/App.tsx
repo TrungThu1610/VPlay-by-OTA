@@ -473,9 +473,8 @@ function TVContent({ active, setActive, isDark, favorites, toggleFavorite, user,
   const timeString = currentTime.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false });
   const isMaintenance = active.status === "maintenance";
 
-  // Maintenance video link via Proxy
-  const maintenanceUrl = "https://docs.google.com/uc?export=download&id=1MWlCIonW7iTWTLOP5PxKru6KFujUV7P6";
-  const proxiedMaintenanceUrl = `/proxy-drive?url=${encodeURIComponent(maintenanceUrl)}`;
+  // Maintenance video statically served from the public folder to ensure Vercel compatibility
+  const proxiedMaintenanceUrl = "/maintenance.mp4";
 
   const filteredChannels = channels
     .filter(ch => {
@@ -1790,7 +1789,6 @@ function AuthModal({ isOpen, onClose, isDark, liquidGlass, setIsDev, setUserData
         onClose();
       }
     } catch (err: any) {
-      console.error("Auth Error:", err);
       const code = err.code;
       if (code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found') {
         setError("Tên đăng nhập hoặc mật khẩu không chính xác.");
@@ -1799,12 +1797,13 @@ function AuthModal({ isOpen, onClose, isDark, liquidGlass, setIsDev, setUserData
       } else if (code === 'auth/invalid-email') {
         setError("Định dạng email không hợp lệ.");
       } else if (code === 'auth/weak-password') {
-        setError("Mật khẩu quá yếu.");
+        setError("Mật khẩu quá yếu, vui lòng chọn mật khẩu phức tạp hơn.");
       } else if (code === 'auth/operation-not-allowed') {
-        setError("Đăng nhập bằng email/mật khẩu chưa được kích hoạt trong hệ thống.");
+        setError("Đăng nhập chưa được kích hoạt trong hệ thống.");
       } else if (code === 'auth/too-many-requests') {
         setError("Tài khoản bị tạm khóa do đăng nhập sai quá nhiều lần. Vui lòng thử lại sau.");
       } else {
+        console.error("Auth System Error:", err);
         setError("Đã có lỗi xảy ra: " + (err.message || "Vui lòng thử lại sau."));
       }
     } finally {
@@ -1840,10 +1839,13 @@ function AuthModal({ isOpen, onClose, isDark, liquidGlass, setIsDev, setUserData
       await signInWithPopup(auth, provider);
       onClose();
     } catch (err: any) {
-      console.error("Google Auth Error:", err);
+      if (err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request') {
+        console.error("Google Auth Error:", err);
+      }
+      
       if (err.code === 'auth/popup-blocked') {
         setError("Cửa sổ đăng nhập bị chặn. Vui lòng cho phép hiện popup.");
-      } else if (err.code === 'auth/cancelled-popup-request') {
+      } else if (err.code === 'auth/cancelled-popup-request' || err.code === 'auth/popup-closed-by-user') {
         // User closed the popup, ignore
       } else {
         setError("Lỗi đăng nhập Google: " + (err.message || "Vui lòng thử lại sau."));
