@@ -447,7 +447,6 @@ function TVContent({ active, setActive, isDark, favorites, toggleFavorite, user,
   showSplash?: boolean
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const maintenanceVideoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
   const [isPlaying, setIsPlaying] = useState(true);
   const [isMuted, setIsMuted] = useState(false); // Default to sound ON
@@ -458,6 +457,7 @@ function TVContent({ active, setActive, isDark, favorites, toggleFavorite, user,
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<string>("Tất cả");
   const [streamError, setStreamError] = useState<string | null>(null);
+  const [maintenanceBlobURL, setMaintenanceBlobURL] = useState<string | null>(null);
 
   // categories definition removed to avoid duplication
 
@@ -468,6 +468,34 @@ function TVContent({ active, setActive, isDark, favorites, toggleFavorite, user,
   const chunksRef = useRef<Blob[]>([]);
 
   useEffect(() => {
+    // Fetch the video into a Blob on initial load. This bypasses Vercel's 
+    // Accept-Ranges/Partial Content issues that cause 0:00 playback freezes,
+    // and avoids the Chromium Demuxer crashes caused by large Base64 Data URIs.
+    let objectUrl: string | null = null;
+    
+    fetch(maintenanceVideoUrl)
+      .then(res => {
+        if (!res.ok) throw new Error(`Video load failed: ${res.status} ${res.statusText}`);
+        const contentType = res.headers.get("content-type");
+        if (contentType && contentType.includes("text/html")) {
+          throw new Error("Server returned HTML instead of video. The asset path might be misconfigured.");
+        }
+        return res.blob();
+      })
+      .then(blob => {
+        objectUrl = URL.createObjectURL(blob);
+        setMaintenanceBlobURL(objectUrl);
+      })
+      .catch(err => {
+        console.error("Maintenance video fetch error:", err.message);
+      });
+
+    return () => {
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, []);
+
+  useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
@@ -475,8 +503,8 @@ function TVContent({ active, setActive, isDark, favorites, toggleFavorite, user,
   const timeString = currentTime.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false });
   const isMaintenance = active.status === "maintenance";
 
-  // Maintenance video statically bundled via Vite import to ensure Vercel cache and Range requests work perfectly.
-  const proxiedMaintenanceUrl = maintenanceVideoUrl;
+  // Using the resolved Blob URL, or fallback to the static asset URL if fetch fails.
+  const proxiedMaintenanceUrl = maintenanceBlobURL || maintenanceVideoUrl;
 
   const filteredChannels = channels
     .filter(ch => {
@@ -777,14 +805,14 @@ function TVContent({ active, setActive, isDark, favorites, toggleFavorite, user,
             {active.status === "maintenance" ? (
               <div className="absolute inset-0 w-full h-full bg-black">
                 {/* Show spinner while waiting for splash dismissal, then render media */}
-                {showSplash ? (
-                  <div className="w-full h-full flex items-center justify-center">
+                {showSplash || (!maintenanceBlobURL && active.status === "maintenance") ? (
+                  <div className="w-full h-full flex flex-col items-center justify-center gap-4">
                     <div className="w-12 h-12 border-4 border-purple-500/20 border-t-purple-500 rounded-full animate-spin" />
+                    {!maintenanceBlobURL && <p className="text-white/60 text-sm font-bold animate-pulse">Đang nạp dữ liệu bảo trì...</p>}
                   </div>
                 ) : (
                   <video
-                    ref={maintenanceVideoRef}
-                    src={proxiedMaintenanceUrl}
+                    ref={videoRef}
                     className="w-full h-full object-cover"
                     autoPlay
                     playsInline
@@ -792,11 +820,24 @@ function TVContent({ active, setActive, isDark, favorites, toggleFavorite, user,
                     controls
                     muted={true}
                     onClick={togglePlay}
+                    onPlay={() => console.log("Maintenance video started playing successfully")}
                     onError={(e) => {
-                      const errorMsg = e.currentTarget.error ? e.currentTarget.error.message : "Unknown video playback error";
-                      console.error(`Maintenance video failed to load from Google Drive: ${errorMsg}`);
+                      const error = (e.target as HTMLVideoElement).error;
+                      let message = "Unknown video playback error";
+                      if (error) {
+                        switch (error.code) {
+                          case error.MEDIA_ERR_ABORTED: message = "Playback aborted"; break;
+                          case error.MEDIA_ERR_NETWORK: message = "Network error while loading video"; break;
+                          case error.MEDIA_ERR_DECODE: message = "Corruption or codec error (Decode failed)"; break;
+                          case error.MEDIA_ERR_SRC_NOT_SUPPORTED: message = "Video format not supported or file not found"; break;
+                        }
+                      }
+                      console.error(`Maintenance video error: ${message}`, error);
                     }}
-                  />
+                  >
+                    <source src={proxiedMaintenanceUrl} type="video/mp4" />
+                    Your browser does not support the video tag.
+                  </video>
                 )}
               </div>
             ) : (
