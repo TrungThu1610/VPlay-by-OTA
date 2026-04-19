@@ -801,7 +801,7 @@ function TVContent({ active, setActive, isDark, favorites, toggleFavorite, user,
                     playsInline
                     loop
                     controls
-                    muted={isMuted}
+                    muted={true}
                     onClick={togglePlay}
                     onError={(e) => {
                       const errorMsg = e.currentTarget.error ? e.currentTarget.error.message : "Unknown video playback error";
