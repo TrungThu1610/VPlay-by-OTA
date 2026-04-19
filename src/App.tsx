@@ -447,6 +447,7 @@ function TVContent({ active, setActive, isDark, favorites, toggleFavorite, user,
   showSplash?: boolean
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const maintenanceVideoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
   const [isPlaying, setIsPlaying] = useState(true);
   const [isMuted, setIsMuted] = useState(false); // Default to sound ON
@@ -504,9 +505,6 @@ function TVContent({ active, setActive, isDark, favorites, toggleFavorite, user,
     // Always try to reset mute when splash is gone
     setIsMuted(false);
 
-    const video = videoRef.current;
-    if (!video) return;
-
     if (active.status === "maintenance") {
       if (hlsRef.current) {
         hlsRef.current.destroy();
@@ -514,21 +512,12 @@ function TVContent({ active, setActive, isDark, favorites, toggleFavorite, user,
       }
       setIsPlaying(true);
       setStreamError(null);
-      
-      // Attempt to play with sound
-      if (video) {
-        const playPromise = video.play();
-        if (playPromise !== undefined) {
-          playPromise.catch(() => {
-            console.warn("Autoplay with sound blocked for maintenance, muting...");
-            video.muted = true;
-            setIsMuted(true);
-            video.play().catch(() => {});
-          });
-        }
-      }
+      // Native autoPlay attribute mixed with muted=true in JSX handles playback perfectly
       return;
     }
+
+    const video = videoRef.current;
+    if (!video) return;
 
     // Track watched channel
     if (user) {
@@ -794,7 +783,7 @@ function TVContent({ active, setActive, isDark, favorites, toggleFavorite, user,
                   </div>
                 ) : (
                   <video
-                    ref={videoRef}
+                    ref={maintenanceVideoRef}
                     src={proxiedMaintenanceUrl}
                     className="w-full h-full object-cover"
                     autoPlay
@@ -849,7 +838,7 @@ function TVContent({ active, setActive, isDark, favorites, toggleFavorite, user,
               </div>
             )}
             {/* Tap to Unmute Overlay */}
-            {isMuted && isPlaying && (
+            {isMuted && isPlaying && !isMaintenance && (
               <button 
                 onClick={toggleMute}
                 className="absolute top-4 right-4 bg-black/60 backdrop-blur-md text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-2 hover:bg-black/80 transition-all animate-bounce"
