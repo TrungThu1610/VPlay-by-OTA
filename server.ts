@@ -46,39 +46,7 @@ async function startServer() {
     return proxy(req, res, next);
   });
 
-  // CORS PROXY FOR GOOGLE DRIVE (Follows Redirects & strips CORP) - Matches Vercel API
-  app.use(["/api/proxy-drive", "/proxy-drive"], (req, res, next) => {
-    const targetUrl = req.query.url as string;
-    if (!targetUrl) return res.status(400).send("No URL provided");
-
-    const urlObj = new URL(targetUrl);
-    const proxy = createProxyMiddleware({
-      target: urlObj.origin,
-      changeOrigin: true,
-      followRedirects: true,
-      pathRewrite: (path, req) => {
-        const url = new URL(req.url!, `http://${req.headers.host}`);
-        const actualTarget = url.searchParams.get('url');
-        if (actualTarget) {
-          const targetPath = new URL(actualTarget).pathname + new URL(actualTarget).search;
-          return targetPath;
-        }
-        return path;
-      },
-      on: {
-        proxyRes: (proxyRes) => {
-          proxyRes.headers["access-control-allow-origin"] = "*";
-          proxyRes.headers["access-control-allow-methods"] = "GET, POST, OPTIONS";
-          proxyRes.headers["access-control-allow-headers"] = "Content-Type, Authorization";
-          delete proxyRes.headers["cross-origin-resource-policy"];
-          delete proxyRes.headers["cross-origin-embedder-policy"];
-          delete proxyRes.headers["cross-origin-opener-policy"];
-        },
-      },
-    });
-
-    return proxy(req, res, next);
-  });
+  // Proxy removed - not needed since we moved to imported static assets.
 
   // VITE MIDDLEWARE
   if (process.env.NODE_ENV !== "production") {

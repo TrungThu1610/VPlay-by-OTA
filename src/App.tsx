@@ -12,6 +12,7 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, on
 import { doc, getDoc, setDoc, collection, getDocs, serverTimestamp, updateDoc, arrayUnion, getDocFromServer } from "firebase/firestore";
 
 import { channels, Channel } from "./channels";
+import maintenanceVideoUrl from "./assets/maintenance.mp4";
 
 // Test connection as per critical directive
 // Test connection removed
@@ -473,9 +474,8 @@ function TVContent({ active, setActive, isDark, favorites, toggleFavorite, user,
   const timeString = currentTime.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false });
   const isMaintenance = active.status === "maintenance";
 
-  // Maintenance video proxied via Vercel Serverless Function to bypass CORS and CORP
-  const maintenanceUrl = "https://docs.google.com/uc?export=download&id=1MWlCIonW7iTWTLOP5PxKru6KFujUV7P6";
-  const proxiedMaintenanceUrl = `/api/proxy-drive?url=${encodeURIComponent(maintenanceUrl)}`;
+  // Maintenance video statically bundled via Vite import to ensure Vercel cache and Range requests work perfectly.
+  const proxiedMaintenanceUrl = maintenanceVideoUrl;
 
   const filteredChannels = channels
     .filter(ch => {
