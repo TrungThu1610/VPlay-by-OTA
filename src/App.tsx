@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect, useRef, ChangeEvent, FormEvent, ReactNode } from "react";
-import { Search, User, Tv, Calendar, Home, Play, Pause, Radio, Info, Sun, Moon, Maximize, Settings, Volume2, VolumeX, CheckCircle2, Shield, LogOut, LogIn, Heart, X, Lock, Terminal, Zap, Clock, History, MousePointer2, Sliders, ChevronLeft, ChevronRight, Mic, Layers, Filter, Sparkles, Camera, Palette, Layout, MessageSquare, Eye, EyeOff, ExternalLink, Monitor, Columns, Maximize2, Circle, AlertCircle } from "lucide-react";
+import { Search, User, Tv, Calendar, Home, Play, Pause, Radio, Info, Sun, Moon, Maximize, Settings, Volume2, VolumeX, CheckCircle2, Shield, LogOut, LogIn, Heart, X, Lock, Terminal, Zap, Clock, History, MousePointer2, Sliders, ChevronLeft, ChevronRight, Mic, Layers, Filter, Sparkles, Camera, Palette, Layout, MessageSquare, Eye, EyeOff, ExternalLink, Monitor, Columns, Maximize2, Circle, AlertCircle, RotateCcw } from "lucide-react";
 import Hls from "hls.js";
 import { motion, AnimatePresence, MotionConfig } from "motion/react";
 import { auth, db, handleFirestoreError, OperationType } from "./firebase";
@@ -12,7 +12,6 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, on
 import { doc, getDoc, setDoc, collection, getDocs, serverTimestamp, updateDoc, arrayUnion, getDocFromServer } from "firebase/firestore";
 
 import { channels, Channel } from "./channels";
-import maintenanceVideoUrl from "./assets/maintenance.mp4";
 
 // Test connection as per critical directive
 // Test connection removed
@@ -457,7 +456,6 @@ function TVContent({ active, setActive, isDark, favorites, toggleFavorite, user,
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<string>("Tất cả");
   const [streamError, setStreamError] = useState<string | null>(null);
-  const [maintenanceBlobURL, setMaintenanceBlobURL] = useState<string | null>(null);
 
   // categories definition removed to avoid duplication
 
@@ -468,43 +466,12 @@ function TVContent({ active, setActive, isDark, favorites, toggleFavorite, user,
   const chunksRef = useRef<Blob[]>([]);
 
   useEffect(() => {
-    // Fetch the video into a Blob on initial load. This bypasses Vercel's 
-    // Accept-Ranges/Partial Content issues that cause 0:00 playback freezes,
-    // and avoids the Chromium Demuxer crashes caused by large Base64 Data URIs.
-    let objectUrl: string | null = null;
-    
-    fetch(maintenanceVideoUrl)
-      .then(res => {
-        if (!res.ok) throw new Error(`Video load failed: ${res.status} ${res.statusText}`);
-        const contentType = res.headers.get("content-type");
-        if (contentType && contentType.includes("text/html")) {
-          throw new Error("Server returned HTML instead of video. The asset path might be misconfigured.");
-        }
-        return res.blob();
-      })
-      .then(blob => {
-        objectUrl = URL.createObjectURL(blob);
-        setMaintenanceBlobURL(objectUrl);
-      })
-      .catch(err => {
-        console.error("Maintenance video fetch error:", err.message);
-      });
-
-    return () => {
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-    };
-  }, []);
-
-  useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
   const timeString = currentTime.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false });
   const isMaintenance = active.status === "maintenance";
-
-  // Using the resolved Blob URL, or fallback to the static asset URL if fetch fails.
-  const proxiedMaintenanceUrl = maintenanceBlobURL || maintenanceVideoUrl;
 
   const filteredChannels = channels
     .filter(ch => {
@@ -803,42 +770,67 @@ function TVContent({ active, setActive, isDark, favorites, toggleFavorite, user,
         ) : (
           <>
             {active.status === "maintenance" ? (
-              <div className="absolute inset-0 w-full h-full bg-black">
-                {/* Show spinner while waiting for splash dismissal, then render media */}
-                {showSplash || (!maintenanceBlobURL && active.status === "maintenance") ? (
-                  <div className="w-full h-full flex flex-col items-center justify-center gap-4">
-                    <div className="w-12 h-12 border-4 border-purple-500/20 border-t-purple-500 rounded-full animate-spin" />
-                    {!maintenanceBlobURL && <p className="text-white/60 text-sm font-bold animate-pulse">Đang nạp dữ liệu bảo trì...</p>}
+              <div className="absolute inset-0 w-full h-full bg-[#0a0a0a] flex flex-col items-center justify-center p-8 overflow-hidden">
+                {/* Background Testcard Pattern */}
+                <div className="absolute inset-0 opacity-10 pointer-events-none select-none overflow-hidden">
+                  <div className="w-full h-full" style={{ backgroundImage: 'repeating-linear-gradient(45deg, #1a1a1a 0, #1a1a1a 1px, transparent 0, transparent 50%)', backgroundSize: '100px 100px' }} />
+                  <div className="absolute top-1/2 left-0 w-full h-[1px] bg-red-500/30" />
+                  <div className="absolute top-0 left-1/2 w-[1px] h-full bg-red-500/30" />
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] border border-white/20 rounded-full" />
+                </div>
+
+                <motion.div 
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="relative z-10 text-center space-y-8"
+                >
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="p-5 rounded-[2rem] bg-amber-500/10 border border-amber-500/20 shadow-[0_0_30px_rgba(245,158,11,0.1)]">
+                      <Zap className="h-12 w-12 text-amber-500 animate-pulse" />
+                    </div>
+                    <div className="space-y-2">
+                      <h3 className="text-4xl font-black text-white tracking-tighter uppercase italic">Kênh đang bảo trì</h3>
+                      <p className="text-white/40 font-mono text-sm uppercase tracking-widest">System Status: Maintenance Mode</p>
+                    </div>
                   </div>
-                ) : (
-                  <video
-                    ref={videoRef}
-                    className="w-full h-full object-cover"
-                    autoPlay
-                    playsInline
-                    loop
-                    controls
-                    muted={true}
-                    onClick={togglePlay}
-                    onPlay={() => console.log("Maintenance video started playing successfully")}
-                    onError={(e) => {
-                      const error = (e.target as HTMLVideoElement).error;
-                      let message = "Unknown video playback error";
-                      if (error) {
-                        switch (error.code) {
-                          case error.MEDIA_ERR_ABORTED: message = "Playback aborted"; break;
-                          case error.MEDIA_ERR_NETWORK: message = "Network error while loading video"; break;
-                          case error.MEDIA_ERR_DECODE: message = "Corruption or codec error (Decode failed)"; break;
-                          case error.MEDIA_ERR_SRC_NOT_SUPPORTED: message = "Video format not supported or file not found"; break;
-                        }
-                      }
-                      console.error(`Maintenance video error: ${message}`, error);
-                    }}
-                  >
-                    <source src={proxiedMaintenanceUrl} type="video/mp4" />
-                    Your browser does not support the video tag.
-                  </video>
-                )}
+
+                  <div className="bg-white/5 border border-white/10 backdrop-blur-md p-6 max-w-md rounded-2xl space-y-4">
+                    <p className="text-white/70 text-sm leading-relaxed">
+                      Kênh truyền hình này hiện đang trong quá trình nâng cấp hệ thống định kỳ. Vui lòng quay lại sau ít phút hoặc xem các kênh khác.
+                    </p>
+                    <div className="flex items-center justify-center gap-6 pt-2 border-t border-white/5 text-[10px] font-mono text-white/30 uppercase tracking-widest">
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                        <span>Signal: Stable</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                        <span>Update: 85%</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-center gap-4">
+                    <button 
+                      onClick={() => window.location.reload()}
+                      className="px-8 py-3 bg-white hover:bg-white/90 text-black rounded-xl text-sm font-black uppercase tracking-wider transition-all hover:scale-105 active:scale-95 flex items-center gap-2"
+                    >
+                      <RotateCcw size={16} />
+                      Tải lại trang
+                    </button>
+                    <div className="px-6 py-3 border border-white/20 text-white/60 rounded-xl text-xs font-mono">
+                      CODE: MAINTENANCE_503
+                    </div>
+                  </div>
+                </motion.div>
+
+                {/* Corner Accents */}
+                <div className="absolute top-8 left-8 font-mono text-[10px] text-white/20 select-none">
+                  VPLAY // SYSTEM_CORE_v2.4
+                </div>
+                <div className="absolute bottom-8 right-8 font-mono text-[10px] text-white/20 select-none">
+                  {new Date().toISOString()}
+                </div>
               </div>
             ) : (
               <video
