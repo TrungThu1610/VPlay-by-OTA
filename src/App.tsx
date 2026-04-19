@@ -12,7 +12,6 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, on
 import { doc, getDoc, setDoc, collection, getDocs, serverTimestamp, updateDoc, arrayUnion, getDocFromServer } from "firebase/firestore";
 
 import { channels, Channel } from "./channels";
-import maintenanceVideoUrl from "./assets/maintenance.mp4";
 
 // Test connection as per critical directive
 // Test connection removed
@@ -474,8 +473,8 @@ function TVContent({ active, setActive, isDark, favorites, toggleFavorite, user,
   const timeString = currentTime.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false });
   const isMaintenance = active.status === "maintenance";
 
-  // Maintenance video statically served from the assets folder to ensure Vercel compatibility
-  const proxiedMaintenanceUrl = maintenanceVideoUrl;
+  // Maintenance video statically served from the public folder to ensure Vercel compatibility and a stable URL
+  const proxiedMaintenanceUrl = "/maintenance.mp4";
 
   const filteredChannels = channels
     .filter(ch => {
